@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Contactos FRIOR S.L.</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; }
     header { 
@@ -181,7 +186,7 @@
       Contactos FRIOR S.L.
     </h1>
     <div class="admin-controls">
-      <i class="fas fa-user-shield admin-login" onclick="showLoginModal()"></i>
+      <i class="fas fa-user-shield admin-login hidden" onclick="showLoginModal()"></i>
       <div class="logout hidden" id="logoutBtn" onclick="logout()">Cerrar Sesión</div>
     </div>
   </header>
@@ -241,11 +246,70 @@
   </div>
 
   <script>
-    let isAdmin = false;
-    let contacts = JSON.parse(localStorage.getItem('contacts')) || [];
+    // Configuración de Firebase (usar variables de entorno en Netlify)
+    const firebaseConfig = {
+      apiKey: process.env.FIREBASE_API_KEY,
+      authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+      appId: process.env.FIREBASE_APP_ID
+    };
 
-    function saveContacts() {
-      localStorage.setItem('contacts', JSON.stringify(contacts));
+    // Inicializar Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    const storage = firebase.storage();
+
+    let isAdmin = false;
+    let contacts = [];
+    let unsubscribeContacts = null;
+
+    // Escuchar cambios en el estado de autenticación
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        isAdmin = true;
+        document.getElementById("adminPanel").classList.remove("hidden");
+        document.getElementById("logoutBtn").classList.remove("hidden");
+        document.querySelector(".admin-login").classList.add("hidden");
+        loadLogoFromFirestore();
+      } else {
+        isAdmin = false;
+        document.getElementById("adminPanel").classList.add("hidden");
+        document.getElementById("logoutBtn").classList.add("hidden");
+        document.querySelector(".admin-login").classList.remove("hidden");
+        loadLogoFromFirestore();
+      }
+    });
+
+    // Usar escucha en tiempo real para cargar contactos
+    function listenToContacts() {
+      if (unsubscribeContacts) unsubscribeContacts(); // Evitar múltiples listeners
+      unsubscribeContacts = db.collection('contacts').onSnapshot(snapshot => {
+        contacts = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        renderTable();
+      }, error => {
+        console.error('Error listening to contacts:', error);
+        alert('Error al cargar los contactos.');
+      });
+    }
+
+    async function loadLogoFromFirestore() {
+      try {
+        const doc = await db.collection('settings').doc('logo').get();
+        if (doc.exists) {
+          const logoUrl = doc.data().url;
+          const img = document.getElementById("logoImage");
+          img.src = logoUrl;
+          img.classList.remove("hidden");
+        }
+      } catch (error) {
+        console.error('Error loading logo:', error);
+      }
     }
 
     function showLoginModal() {
@@ -256,7 +320,7 @@
       modal.innerHTML = `
         <div class="modal-content">
           <h3>Iniciar Sesión</h3>
-          <input type="text" id="adminUser" placeholder="Usuario" required>
+          <input type="email" id="adminEmail" placeholder="Correo" required>
           <input type="password" id="adminPass" placeholder="Contraseña" required>
           <button class="button" onclick="login()">Iniciar Sesión</button>
           <button class="button" onclick="closeLoginModal()">Cancelar</button>
@@ -273,26 +337,23 @@
     }
 
     function login() {
-      const user = document.getElementById("adminUser").value;
+      const email = document.getElementById("adminEmail").value;
       const pass = document.getElementById("adminPass").value;
-      if (user === 'adminfrior' && pass === 'frior2025') {
-        isAdmin = true;
-        document.getElementById("adminPanel").classList.remove("hidden");
-        document.getElementById("logoutBtn").classList.remove("hidden");
-        document.querySelector(".admin-login").classList.add("hidden");
-        closeLoginModal();
-        renderTable();
-      } else {
-        alert("Acceso denegado.");
-      }
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(() => {
+          closeLoginModal();
+        })
+        .catch(error => {
+          console.error('Error logging in:', error);
+          alert('Acceso denegado: ' + error.message);
+        });
     }
 
     function logout() {
-      isAdmin = false;
-      document.getElementById("adminPanel").classList.add("hidden");
-      document.getElementById("logoutBtn").classList.add("hidden");
-      document.querySelector(".admin-login").classList.remove("hidden");
-      renderTable();
+      auth.signOut().catch(error => {
+        console.error('Error logging out:', error);
+        alert('Error al cerrar sesión.');
+      });
     }
 
     function renderTable() {
@@ -313,65 +374,124 @@
               <a href="mailto:${c.correo}"><i class="fas fa-envelope"></i></a>
               <a href="tel:${c.telefono}"><i class="fas fa-phone"></i></a>
             </div>
-            ${isAdmin ? `<i class="fas fa-edit" onclick="editContact(${i})"></i>
-                         <i class="fas fa-trash" onclick="deleteContact(${i})"></i>` : ""}
+            ${isAdmin ? `<i class="fas fa-edit" onclick="editContact('${c.id}')"></i>
+                         <i class="fas fa-trash" onclick="deleteContact('${c.id}')"></i>` : ""}
           </td>
         `;
         tbody.appendChild(row);
       });
     }
 
-    function addContact(event) {
+    async function addContact(event) {
       event.preventDefault();
+      if (!isAdmin) {
+        alert('Debes iniciar sesión como administrador.');
+        return;
+      }
       const c = {
-        nombre: document.getElementById("newName").value,
-        telefono: document.getElementById("newPhone").value,
-        correo: document.getElementById("newEmail").value,
-        cargo: document.getElementById("newCargo").value,
-        ubicacion: document.getElementById("newUbicacion").value
+        nombre: document.getElementById("newName").value.trim(),
+        telefono: document.getElementById("newPhone").value.trim(),
+        correo: document.getElementById("newEmail").value.trim(),
+        cargo: document.getElementById("newCargo").value.trim(),
+        ubicacion: document.getElementById("newUbicacion").value.trim()
       };
-      contacts.push(c);
-      saveContacts();
-      event.target.reset();
-      renderTable();
+      // Validar para evitar duplicados
+      const exists = contacts.some(contact => 
+        contact.nombre === c.nombre && 
+        contact.telefono === c.telefono && 
+        contact.correo === c.correo
+      );
+      if (exists) {
+        alert('Este contacto ya existe.');
+        return;
+      }
+      try {
+        await db.collection('contacts').add(c);
+        event.target.reset();
+      } catch (error) {
+        console.error('Error adding contact:', error);
+        alert('Error al agregar el contacto.');
+      }
     }
 
-    function editContact(index) {
-      const c = contacts[index];
-      document.getElementById("newName").value = c.nombre;
-      document.getElementById("newPhone").value = c.telefono;
-      document.getElementById("newEmail").value = c.correo;
-      document.getElementById("newCargo").value = c.cargo;
-      document.getElementById("newUbicacion").value = c.ubicacion;
-      deleteContact(index);
+    async function editContact(id) {
+      if (!isAdmin) {
+        alert('Debes iniciar sesión como administrador.');
+        return;
+      }
+      try {
+        const doc = await db.collection('contacts').doc(id).get();
+        const c = doc.data();
+        document.getElementById("newName").value = c.nombre;
+        document.getElementById("newPhone").value = c.telefono;
+        document.getElementById("newEmail").value = c.correo;
+        document.getElementById("newCargo").value = c.cargo;
+        document.getElementById("newUbicacion").value = c.ubicacion;
+        await deleteContact(id);
+      } catch (error) {
+        console.error('Error editing contact:', error);
+        alert('Error al editar el contacto.');
+      }
     }
 
-    function deleteContact(index) {
-      contacts.splice(index, 1);
-      saveContacts();
-      renderTable();
+    async function deleteContact(id) {
+      if (!isAdmin) {
+        alert('Debes iniciar sesión como administrador.');
+        return;
+      }
+      try {
+        await db.collection('contacts').doc(id).delete();
+      } catch (error) {
+        console.error('Error deleting contact:', error);
+        alert('Error al eliminar el contacto.');
+      }
     }
 
     function cancelChanges() {
       document.querySelector(".add-form").reset();
     }
 
-    function uploadLogo(event) {
+    async function uploadLogo(event) {
+      if (!isAdmin) {
+        alert('Debes iniciar sesión como administrador.');
+        return;
+      }
       const file = event.target.files[0];
-      const reader = new FileReader();
-      reader.onload = function(e) {
+      if (!file) return;
+      // Limitar tamaño del archivo (máximo 500KB para ahorrar espacio)
+      if (file.size > 500 * 1024) {
+        alert('El archivo es demasiado grande. Usa una imagen de menos de 500KB.');
+        return;
+      }
+      try {
+        const storageRef = storage.ref('logos/logo.png');
+        await storageRef.put(file);
+        const url = await storageRef.getDownloadURL();
+        await db.collection('settings').doc('logo').set({ url });
         const img = document.getElementById("logoImage");
-        img.src = e.target.result;
+        img.src = url;
         img.classList.remove("hidden");
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Error uploading logo:', error);
+        alert('Error al subir el logo.');
+      }
     }
 
-    function loadLogoUrl() {
+    async function loadLogoUrl() {
+      if (!isAdmin) {
+        alert('Debes iniciar sesión como administrador.');
+        return;
+      }
       const url = document.getElementById("logoUrl").value;
-      const img = document.getElementById("logoImage");
-      img.src = url;
-      img.classList.remove("hidden");
+      try {
+        await db.collection('settings').doc('logo').set({ url });
+        const img = document.getElementById("logoImage");
+        img.src = url;
+        img.classList.remove("hidden");
+      } catch (error) {
+        console.error('Error saving logo URL:', error);
+        alert('Error al guardar la URL del logo.');
+      }
     }
 
     function exportToExcel() {
@@ -388,21 +508,51 @@
       document.body.removeChild(link);
     }
 
-    function importFromExcel(event) {
+    async function importFromExcel(event) {
+      if (!isAdmin) {
+        alert('Debes iniciar sesión como administrador.');
+        return;
+      }
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         const text = e.target.result;
         const rows = text.split('\n').slice(1); // Skip header
+        const batch = db.batch();
+        let newContacts = 0;
         rows.forEach(row => {
           const [nombre, telefono, correo, cargo, ubicacion] = row.split(',');
           if (nombre && telefono && correo && cargo && ubicacion) {
-            contacts.push({ nombre, telefono, correo, cargo, ubicacion });
+            const trimmedContact = {
+              nombre: nombre.trim(),
+              telefono: telefono.trim(),
+              correo: correo.trim(),
+              cargo: cargo.trim(),
+              ubicacion: ubicacion.trim()
+            };
+            const exists = contacts.some(c => 
+              c.nombre === trimmedContact.nombre && 
+              c.telefono === trimmedContact.telefono && 
+              c.correo === trimmedContact.correo
+            );
+            if (!exists) {
+              const contactRef = db.collection('contacts').doc();
+              batch.set(contactRef, trimmedContact);
+              newContacts++;
+            }
           }
         });
-        saveContacts();
-        renderTable();
+        if (newContacts === 0) {
+          alert('No se encontraron nuevos contactos para importar.');
+          return;
+        }
+        try {
+          await batch.commit();
+        } catch (error) {
+          console.error('Error importing contacts:', error);
+          alert('Error al importar los contactos.');
+        }
       };
       reader.readAsText(file);
     }
@@ -421,13 +571,13 @@
       });
     }
 
-    function sortTable(colIndex) {
-      contacts.sort((a, b) => {
+    async function sortTable(colIndex) {
+      const sortedContacts = [...contacts].sort((a, b) => {
         const valA = Object.values(a)[colIndex - 1].toLowerCase();
         const valB = Object.values(b)[colIndex - 1].toLowerCase();
         return valA.localeCompare(valB);
       });
-      saveContacts();
+      contacts = sortedContacts;
       renderTable();
     }
 
@@ -449,8 +599,8 @@
       window.open(url, '_blank');
     }
 
-    // Renderizar tabla al cargar la página
-    renderTable();
+    // Iniciar la escucha de contactos al cargar la página
+    listenToContacts();
   </script>
 </body>
 </html>
