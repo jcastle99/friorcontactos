@@ -1,222 +1,207 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Contactos Frior S.L</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contactos FRIOR S.L.</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f3f3f3;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background-color: #1e3a8a;
-      color: white;
-      padding: 1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    header img {
-      max-height: 40px;
-      margin-right: 1rem;
-    }
-    h1 {
-      margin: 0;
-    }
-    .admin-link {
-      color: white;
-      font-size: 0.8rem;
-      opacity: 0.3;
-      cursor: pointer;
-    }
-    .filters input {
-      margin: 0.5rem;
-      padding: 0.3rem;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 1rem 0;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 0.5rem;
-      text-align: left;
-    }
-    .admin-actions button {
-      margin-right: 0.3rem;
-    }
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; }
+    header { background: #003366; color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { margin: 0; font-size: 1.5rem; }
+    .hidden { display: none; }
+    .admin-login { position: fixed; top: 10px; right: 10px; font-size: 0.8rem; cursor: pointer; color: white; }
+    .container { padding: 1rem; max-width: 1200px; margin: auto; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #004080; color: white; cursor: pointer; }
+    tr:hover { background-color: #f1f1f1; }
+    .actions i { margin: 0 5px; cursor: pointer; }
+    .filters input { margin-right: 1rem; padding: 5px; }
+    .admin-panel, .add-form, .logo-form { margin-top: 1rem; }
+    .button { padding: 0.5rem 1rem; margin: 5px; background: #004080; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .button:hover { background: #0066cc; }
+    .contact-actions a { margin-right: 10px; color: #0066cc; text-decoration: none; }
   </style>
 </head>
 <body>
   <header>
-    <div style="display: flex; align-items: center">
-      <h1>Contactos Frior S.L</h1>
-    </div>
-    <div class="admin-link" onclick="document.getElementById('login').style.display = 'block';">Admin</div>
+    <h1>Contactos FRIOR S.L.</h1>
+    <div class="admin-login" onclick="toggleLogin()">Admin</div>
   </header>
 
-  <section class="filters">
-    <input id="filter-name" type="text" placeholder="Filtrar por nombre" />
-    <input id="filter-role" type="text" placeholder="Filtrar por cargo" />
-    <input id="filter-location" type="text" placeholder="Filtrar por ubicación" />
-  </section>
+  <div class="container">
+    <div class="filters">
+      <input type="text" id="filterName" placeholder="Filtrar por nombre" oninput="filterTable()">
+      <input type="text" id="filterCargo" placeholder="Filtrar por cargo" oninput="filterTable()">
+      <input type="text" id="filterUbicacion" placeholder="Filtrar por ubicación" oninput="filterTable()">
+    </div>
 
-  <table id="contact-table">
-    <thead>
-      <tr>
-        <th>Nombre</th>
-        <th>Teléfono</th>
-        <th>Correo</th>
-        <th>Cargo</th>
-        <th>Ubicación</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <button onclick="exportToExcel()" class="button">Exportar a Excel</button>
 
-  <div id="login" style="display:none; padding: 1rem; background:#fff;">
-    <h2>Iniciar sesión como Admin</h2>
-    <form id="login-form">
-      <input type="text" id="username" placeholder="Usuario" required />
-      <input type="password" id="password" placeholder="Contraseña" required />
-      <button type="submit">Entrar</button>
-    </form>
-  </div>
-
-  <div id="admin-panel" style="display:none; padding:1rem; background:#fff;">
-    <h2>Panel de Administración</h2>
-    <form id="new-contact-form">
-      <input type="text" placeholder="Nombre" required />
-      <input type="text" placeholder="Teléfono" required />
-      <input type="email" placeholder="Correo" required />
-      <input type="text" placeholder="Cargo" required />
-      <input type="text" placeholder="Ubicación" required />
-      <button type="submit">Agregar</button>
-    </form>
-    <input type="file" id="import-excel" accept=".xlsx,.xls" />
-    <input type="file" id="upload-logo" accept="image/*" />
-    <input type="text" id="logo-url" placeholder="URL del logo" />
-
-    <table id="admin-table">
+    <table id="contactTable">
       <thead>
         <tr>
-          <th>Nombre</th>
-          <th>Teléfono</th>
-          <th>Correo</th>
-          <th>Cargo</th>
-          <th>Ubicación</th>
+          <th onclick="sortTable(0)">Nombre</th>
+          <th onclick="sortTable(1)">Teléfono</th>
+          <th onclick="sortTable(2)">Correo</th>
+          <th onclick="sortTable(3)">Cargo</th>
+          <th onclick="sortTable(4)">Ubicación</th>
           <th>Acciones</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody id="contactList">
+        <!-- Filas dinámicas -->
+      </tbody>
     </table>
+
+    <div class="admin-panel hidden" id="adminPanel">
+      <h3>Panel de Administración</h3>
+      <form class="add-form" onsubmit="addContact(event)">
+        <input type="text" id="newName" placeholder="Nombre" required>
+        <input type="text" id="newPhone" placeholder="Teléfono" required>
+        <input type="email" id="newEmail" placeholder="Correo" required>
+        <input type="text" id="newCargo" placeholder="Cargo" required>
+        <input type="text" id="newUbicacion" placeholder="Ubicación" required>
+        <button class="button" type="submit">Agregar</button>
+        <button class="button" type="button" onclick="cancelChanges()">Cancelar</button>
+      </form>
+      <form class="logo-form">
+        <input type="file" id="logoUpload" accept="image/*" onchange="uploadLogo(event)">
+        <input type="text" id="logoUrl" placeholder="o pegar URL del logo" onchange="loadLogoUrl()">
+      </form>
+    </div>
+
+    <img id="logoImage" class="hidden" style="max-height: 80px; margin-top: 20px;">
   </div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const rows = document.querySelectorAll("#contact-table tbody tr");
+    let isAdmin = false;
+    const contacts = [];
 
-      function filterTable(index, value) {
-        document.querySelectorAll("#contact-table tbody tr").forEach(row => {
-          const cell = row.cells[index]?.textContent.toLowerCase() || "";
-          row.style.display = cell.includes(value) ? "" : "none";
-        });
+    function toggleLogin() {
+      const user = prompt("Usuario:");
+      const pass = prompt("Contraseña:");
+      if (user === 'adminfrior' && pass === 'frior2025') {
+        isAdmin = true;
+        document.getElementById("adminPanel").classList.remove("hidden");
+        renderTable();
+      } else {
+        alert("Acceso denegado.");
       }
+    }
 
-      document.getElementById("filter-name").addEventListener("input", e => filterTable(0, e.target.value.toLowerCase()));
-      document.getElementById("filter-role").addEventListener("input", e => filterTable(3, e.target.value.toLowerCase()));
-      document.getElementById("filter-location").addEventListener("input", e => filterTable(4, e.target.value.toLowerCase()));
-
-      const loginForm = document.getElementById("login-form");
-      loginForm?.addEventListener("submit", e => {
-        e.preventDefault();
-        const user = document.getElementById('username').value;
-        const pass = document.getElementById('password').value;
-        if (user === "adminfrior" && pass === "frior2025") {
-          document.getElementById("login").style.display = "none";
-          document.getElementById("admin-panel").style.display = "block";
-        } else {
-          alert("Credenciales incorrectas.");
-        }
-      });
-
-      const newContactForm = document.getElementById("new-contact-form");
-      newContactForm?.addEventListener("submit", function (e) {
-        e.preventDefault();
-        const inputs = this.querySelectorAll("input");
-        const data = Array.from(inputs).map(input => input.value);
+    function renderTable() {
+      const tbody = document.getElementById("contactList");
+      tbody.innerHTML = "";
+      contacts.forEach((c, i) => {
         const row = document.createElement("tr");
         row.innerHTML = `
-          <td>${data[0]}</td>
-          <td>${data[1]}</td>
-          <td>${data[2]}</td>
-          <td>${data[3]}</td>
-          <td>${data[4]}</td>
-          <td><button class="edit-btn">Editar</button><button class="delete-btn">Eliminar</button></td>
+          <td>${c.nombre}</td>
+          <td><a href="tel:${c.telefono}">${c.telefono}</a></td>
+          <td><a href="mailto:${c.correo}">${c.correo}</a></td>
+          <td>${c.cargo}</td>
+          <td>${c.ubicacion}</td>
+          <td class="actions">
+            <div class="contact-actions">
+              <a href="https://wa.me/${c.telefono}" target="_blank"><i class="fab fa-whatsapp"></i></a>
+              <a href="mailto:${c.correo}"><i class="fas fa-envelope"></i></a>
+            </div>
+            ${isAdmin ? `<i class="fas fa-edit" onclick="editContact(${i})"></i>
+                         <i class="fas fa-trash" onclick="deleteContact(${i})"></i>` : ""}
+          </td>
         `;
-        document.querySelector("#admin-table tbody").appendChild(row);
-        addEditDeleteFunctionality(row);
-        this.reset();
+        tbody.appendChild(row);
       });
+    }
 
-      function addEditDeleteFunctionality(row) {
-        row.querySelector(".edit-btn").addEventListener("click", () => {
-          const cells = row.querySelectorAll("td");
-          for (let i = 0; i < 5; i++) {
-            cells[i].innerText = prompt("Editar:", cells[i].innerText) || cells[i].innerText;
-          }
-        });
-        row.querySelector(".delete-btn").addEventListener("click", () => {
-          if (confirm("¿Eliminar contacto?")) row.remove();
-        });
-      }
+    function addContact(event) {
+      event.preventDefault();
+      const c = {
+        nombre: document.getElementById("newName").value,
+        telefono: document.getElementById("newPhone").value,
+        correo: document.getElementById("newEmail").value,
+        cargo: document.getElementById("newCargo").value,
+        ubicacion: document.getElementById("newUbicacion").value
+      };
+      contacts.push(c);
+      event.target.reset();
+      renderTable();
+    }
 
-      document.getElementById("import-excel")?.addEventListener("change", function (e) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = function () {
-          const workbook = XLSX.read(reader.result, { type: "binary" });
-          const sheet = workbook.Sheets[workbook.SheetNames[0]];
-          const data = XLSX.utils.sheet_to_json(sheet);
-          data.forEach(contact => {
-            const row = document.createElement("tr");
-            row.innerHTML = `
-              <td>${contact.Nombre}</td>
-              <td>${contact.Telefono}</td>
-              <td>${contact.Correo}</td>
-              <td>${contact.Cargo}</td>
-              <td>${contact.Ubicacion}</td>
-              <td><button class="edit-btn">Editar</button><button class="delete-btn">Eliminar</button></td>
-            `;
-            document.querySelector("#admin-table tbody").appendChild(row);
-            addEditDeleteFunctionality(row);
-          });
-        };
-        reader.readAsBinaryString(file);
+    function editContact(index) {
+      const c = contacts[index];
+      document.getElementById("newName").value = c.nombre;
+      document.getElementById("newPhone").value = c.telefono;
+      document.getElementById("newEmail").value = c.correo;
+      document.getElementById("newCargo").value = c.cargo;
+      document.getElementById("newUbicacion").value = c.ubicacion;
+      deleteContact(index);
+    }
+
+    function deleteContact(index) {
+      contacts.splice(index, 1);
+      renderTable();
+    }
+
+    function cancelChanges() {
+      document.querySelector(".add-form").reset();
+    }
+
+    function uploadLogo(event) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = document.getElementById("logoImage");
+        img.src = e.target.result;
+        img.classList.remove("hidden");
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function loadLogoUrl() {
+      const url = document.getElementById("logoUrl").value;
+      const img = document.getElementById("logoImage");
+      img.src = url;
+      img.classList.remove("hidden");
+    }
+
+    function exportToExcel() {
+      let data = "data:text/csv;charset=utf-8,Nombre,Teléfono,Correo,Cargo,Ubicación\n";
+      contacts.forEach(c => {
+        data += `${c.nombre},${c.telefono},${c.correo},${c.cargo},${c.ubicacion}\n`;
       });
+      const encoded = encodeURI(data);
+      const link = document.createElement("a");
+      link.setAttribute("href", encoded);
+      link.setAttribute("download", "contactos_frior.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
 
-      document.getElementById("upload-logo")?.addEventListener("change", function (e) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = function () {
-          const logo = document.createElement('img');
-          logo.src = reader.result;
-          document.querySelector("header").prepend(logo);
-        };
-        reader.readAsDataURL(file);
+    function filterTable() {
+      const name = document.getElementById("filterName").value.toLowerCase();
+      const cargo = document.getElementById("filterCargo").value.toLowerCase();
+      const ubicacion = document.getElementById("filterUbicacion").value.toLowerCase();
+      const rows = document.querySelectorAll("#contactList tr");
+      rows.forEach(row => {
+        const [n, , , c, u] = row.children;
+        const visible = n.textContent.toLowerCase().includes(name) &&
+                        c.textContent.toLowerCase().includes(cargo) &&
+                        u.textContent.toLowerCase().includes(ubicacion);
+        row.style.display = visible ? "" : "none";
       });
+    }
 
-      document.getElementById("logo-url")?.addEventListener("input", function (e) {
-        const logo = document.createElement('img');
-        logo.src = e.target.value;
-        document.querySelector("header").prepend(logo);
+    function sortTable(colIndex) {
+      contacts.sort((a, b) => {
+        const valA = Object.values(a)[colIndex].toLowerCase();
+        const valB = Object.values(b)[colIndex].toLowerCase();
+        return valA.localeCompare(valB);
       });
-    });
+      renderTable();
+    }
   </script>
 </body>
 </html>
