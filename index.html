@@ -240,9 +240,41 @@
     </div>
   </div>
 
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+
   <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBLFd2SJYEXnf99Y4oiZxBK6JHieLds6Lo",
+      authDomain: "contactosfrior.firebaseapp.com",
+      projectId: "contactosfrior",
+      storageBucket: "contactosfrior.firebasestorage.app",
+      messagingSenderId: "695673818841",
+      appId: "1:695673818841:web:ee3abed2c34e9da4dc78c8",
+      measurementId: "G-FJ21S3SE0Z"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     let isAdmin = false;
-    const contacts = [];
+    let contacts = [];
+
+    // Fetch contacts from Firestore and render the table
+    async function fetchContacts() {
+      contacts = [];
+      const snapshot = await db.collection("contacts").get();
+      snapshot.forEach(doc => {
+        contacts.push({ id: doc.id, ...doc.data() });
+      });
+      renderTable();
+    }
+
+    // Call fetchContacts when the page loads
+    fetchContacts();
 
     function showLoginModal() {
       if (isAdmin) return;
@@ -310,14 +342,14 @@
               <a href="tel:${c.telefono}"><i class="fas fa-phone"></i></a>
             </div>
             ${isAdmin ? `<i class="fas fa-edit" onclick="editContact(${i})"></i>
-                         <i class="fas fa-trash" onclick="deleteContact(${i})"></i>` : ""}
+                         <i class="fas fa-trash" onclick="deleteContact('${c.id}')"></i>` : ""}
           </td>
         `;
         tbody.appendChild(row);
       });
     }
 
-    function addContact(event) {
+    async function addContact(event) {
       event.preventDefault();
       const c = {
         nombre: document.getElementById("newName").value,
@@ -326,24 +358,24 @@
         cargo: document.getElementById("newCargo").value,
         ubicacion: document.getElementById("newUbicacion").value
       };
-      contacts.push(c);
+      await db.collection("contacts").add(c);
       event.target.reset();
-      renderTable();
+      fetchContacts();
     }
 
-    function editContact(index) {
+    async function editContact(index) {
       const c = contacts[index];
       document.getElementById("newName").value = c.nombre;
       document.getElementById("newPhone").value = c.telefono;
       document.getElementById("newEmail").value = c.correo;
       document.getElementById("newCargo").value = c.cargo;
       document.getElementById("newUbicacion").value = c.ubicacion;
-      deleteContact(index);
+      await deleteContact(c.id);
     }
 
-    function deleteContact(index) {
-      contacts.splice(index, 1);
-      renderTable();
+    async function deleteContact(docId) {
+      await db.collection("contacts").doc(docId).delete();
+      fetchContacts();
     }
 
     function cancelChanges() {
@@ -382,20 +414,20 @@
       document.body.removeChild(link);
     }
 
-    function importFromExcel(event) {
+    async function importFromExcel(event) {
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         const text = e.target.result;
         const rows = text.split('\n').slice(1); // Skip header
-        rows.forEach(row => {
+        for (const row of rows) {
           const [nombre, telefono, correo, cargo, ubicacion] = row.split(',');
           if (nombre && telefono && correo && cargo && ubicacion) {
-            contacts.push({ nombre, telefono, correo, cargo, ubicacion });
+            await db.collection("contacts").add({ nombre, telefono, correo, cargo, ubicacion });
           }
-        });
-        renderTable();
+        }
+        fetchContacts();
       };
       reader.readAsText(file);
     }
