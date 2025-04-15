@@ -140,6 +140,27 @@
     .modal-content button { 
       margin: 5px; 
     }
+    .loading-message { 
+      text-align: center; 
+      padding: 1rem; 
+      background: #ffeb3b; 
+      color: #333; 
+      margin: 1rem 0; 
+    }
+    .error-message { 
+      text-align: center; 
+      padding: 1rem; 
+      background: #ff3333; 
+      color: white; 
+      margin: 1rem 0; 
+    }
+    .offline-message { 
+      text-align: center; 
+      padding: 1rem; 
+      background: #ffeb3b; 
+      color: #333; 
+      margin: 1rem 0; 
+    }
 
     /* Estilos responsivos */
     @media (max-width: 768px) {
@@ -193,6 +214,8 @@
   </header>
 
   <div class="container">
+    <div id="statusMessage" class="loading-message">Cargando aplicación...</div>
+
     <div class="filters">
       <i class="fas fa-search search-icon"></i>
       <input type="text" id="filterName" placeholder="Filtrar por nombre" oninput="filterTable()">
@@ -249,8 +272,8 @@
   </div>
 
   <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
 
   <script>
     // Firebase Configuration
@@ -264,29 +287,56 @@
       measurementId: "G-FJ21S3SE0Z"
     };
 
-    // Initialize Firebase with retry logic
     let app, db;
+    let isAdmin = false;
+    let contacts = [];
+    let isOffline = !navigator.onLine;
+
+    // Update status message
+    function updateStatus(message, type = 'loading') {
+      const statusMessage = document.getElementById("statusMessage");
+      statusMessage.textContent = message;
+      statusMessage.className = type === 'loading' ? 'loading-message' : type === 'error' ? 'error-message' : 'offline-message';
+    }
+
+    // Wait for Firebase scripts to load
+    async function waitForFirebaseScripts() {
+      let attempts = 0;
+      const maxAttempts = 10;
+      while (attempts < maxAttempts) {
+        if (typeof firebase !== 'undefined' && firebase.app) {
+          return true;
+        }
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      return false;
+    }
+
+    // Initialize Firebase with retry logic
     async function initializeFirebase() {
+      const scriptsLoaded = await waitForFirebaseScripts();
+      if (!scriptsLoaded) {
+        updateStatus("Error: No se pudo cargar el SDK de Firebase. Revisa tu conexión a internet y recarga la página.", "error");
+        return false;
+      }
+
       let attempts = 0;
       const maxAttempts = 3;
       while (attempts < maxAttempts) {
         try {
-          if (typeof firebase === 'undefined') {
-            throw new Error("Firebase SDK not loaded");
-          }
           app = firebase.initializeApp(firebaseConfig);
           db = firebase.firestore();
           console.log("Firebase initialized successfully");
+          updateStatus("");
           return true;
         } catch (error) {
           attempts++;
           console.error(`Firebase initialization attempt ${attempts} failed:`, error);
           if (attempts === maxAttempts) {
-            console.error("Failed to initialize Firebase after maximum attempts");
-            alert("No se pudo inicializar Firebase. Revisa tu conexión a internet y recarga la página.");
+            updateStatus("Error: No se pudo inicializar Firebase. Revisa tu conexión a internet y recarga la página.", "error");
             return false;
           }
-          // Wait 1 second before retrying
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
@@ -330,8 +380,12 @@
       }
     }
 
-    // Initialize Firebase and load data
+    // Initialize app
     async function initApp() {
+      if (isOffline) {
+        updateStatus("Estás sin conexión. Algunas funciones no estarán disponibles.", "offline");
+        return;
+      }
       const initialized = await initializeFirebase();
       if (initialized) {
         await Promise.all([fetchContacts(), loadLogoOnStart()]);
@@ -339,8 +393,16 @@
     }
     initApp();
 
-    let isAdmin = false;
-    let contacts = [];
+    // Handle online/offline events
+    window.addEventListener('online', () => {
+      isOffline = false;
+      updateStatus("Conexión restaurada. Cargando datos...");
+      initApp();
+    });
+    window.addEventListener('offline', () => {
+      isOffline = true;
+      updateStatus("Estás sin conexión. Algunas funciones no estarán disponibles.", "offline");
+    });
 
     function showLoginModal() {
       console.log("showLoginModal called");
@@ -373,6 +435,14 @@
 
     function login() {
       console.log("login called");
+      if (isOffline) {
+        alert("No puedes iniciar sesión sin conexión.");
+        return;
+      }
+      if (!db) {
+        alert("Error: Firestore no está inicializado. Revisa la consola para más detalles.");
+        return;
+      }
       const user = document.getElementById("adminUser").value;
       const pass = document.getElementById("adminPass").value;
       if (user === 'adminfrior' && pass === 'frior2025') {
@@ -430,6 +500,10 @@
     async function addContact(event) {
       event.preventDefault();
       console.log("addContact called");
+      if (isOffline) {
+        alert("No puedes agregar contactos sin conexión.");
+        return;
+      }
       if (!db) {
         console.error("Firestore not initialized");
         alert("Error: Firestore no está inicializado. Revisa la consola para más detalles.");
@@ -470,6 +544,10 @@
 
     async function deleteContact(docId) {
       console.log("deleteContact called with docId:", docId);
+      if (isOffline) {
+        alert("No puedes eliminar contactos sin conexión.");
+        return;
+      }
       if (!db) {
         console.error("Firestore not initialized");
         return;
@@ -491,7 +569,7 @@
     function uploadLogo(event) {
       console.log("uploadLogo called");
       alert("Por favor, usa una URL para el logo en lugar de un archivo local. Sube la imagen a un servicio como imgur.com y pega la URL en el campo 'o pegar URL del logo'.");
-      document.getElementById("logoUpload").value = ""; // Clear the file input
+      document.getElementById("logoUpload").value = "";
     }
 
     async function saveLogoUrl() {
@@ -504,6 +582,10 @@
       const img = document.getElementById("logoImage");
       img.src = url;
       img.classList.remove("hidden");
+      if (isOffline) {
+        alert("No puedes guardar el logo sin conexión.");
+        return;
+      }
       if (!db) {
         console.error("Firestore not initialized");
         alert("Error: Firestore no está inicializado. Revisa la consola para más detalles.");
@@ -525,6 +607,9 @@
       const img = document.getElementById("logoImage");
       img.src = "";
       img.classList.add("hidden");
+      if (isOffline) {
+        return;
+      }
       if (!db) {
         console.error("Firestore not initialized");
         return;
@@ -560,6 +645,10 @@
       console.log("importFromExcel called");
       const file = event.target.files[0];
       if (!file) return;
+      if (isOffline) {
+        alert("No puedes importar contactos sin conexión.");
+        return;
+      }
       if (!db) {
         console.error("Firestore not initialized");
         return;
@@ -567,7 +656,7 @@
       const reader = new FileReader();
       reader.onload = async function(e) {
         const text = e.target.result;
-        const rows = text.split('\n').slice(1); // Skip header
+        const rows = text.split('\n').slice(1);
         try {
           for (const row of rows) {
             const [nombre, telefono, correo, cargo, ubicacion] = row.split(',');
@@ -628,7 +717,6 @@
       window.open(url, '_blank');
     }
 
-    // Attach form submission handler for addContact
     document.getElementById("addContactForm").addEventListener("submit", addContact);
   </script>
 </body>
