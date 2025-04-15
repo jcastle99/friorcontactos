@@ -240,29 +240,32 @@
     </div>
   </div>
 
-  <div class="modal hidden" id="loginModal">
-    <div class="modal-content">
-      <h3>Iniciar Sesión</h3>
-      <input type="text" id="adminUser" placeholder="Usuario" required>
-      <input type="password" id="adminPass" placeholder="Contraseña" required>
-      <button class="button" onclick="login()">Iniciar Sesión</button>
-      <button class="button" onclick="closeLoginModal()">Cancelar</button>
-    </div>
-  </div>
-
   <script>
     let isAdmin = false;
     const contacts = [];
 
     function showLoginModal() {
       if (isAdmin) return;
-      document.getElementById("loginModal").classList.remove("hidden");
+      const modal = document.createElement("div");
+      modal.className = "modal";
+      modal.id = "loginModal";
+      modal.innerHTML = `
+        <div class="modal-content">
+          <h3>Iniciar Sesión</h3>
+          <input type="text" id="adminUser" placeholder="Usuario" required>
+          <input type="password" id="adminPass" placeholder="Contraseña" required>
+          <button class="button" onclick="login()">Iniciar Sesión</button>
+          <button class="button" onclick="closeLoginModal()">Cancelar</button>
+        </div>
+      `;
+      document.body.appendChild(modal);
     }
 
     function closeLoginModal() {
-      document.getElementById("loginModal").classList.add("hidden");
-      document.getElementById("adminUser").value = "";
-      document.getElementById("adminPass").value = "";
+      const modal = document.getElementById("loginModal");
+      if (modal) {
+        modal.remove();
+      }
     }
 
     function login() {
