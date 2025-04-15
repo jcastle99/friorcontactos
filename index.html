@@ -97,6 +97,12 @@
     .button:hover { 
       background: #0066cc; 
     }
+    .button.redo { 
+      background: #cc0000; 
+    }
+    .button.redo:hover { 
+      background: #ff3333; 
+    }
     .contact-actions a { 
       margin-right: 10px; 
       color: #0066cc; 
@@ -235,7 +241,9 @@
       </form>
       <form class="logo-form">
         <input type="file" id="logoUpload" accept="image/*" onchange="uploadLogo(event)">
-        <input type="text" id="logoUrl" placeholder="o pegar URL del logo" onchange="saveLogoUrl()">
+        <input type="text" id="logoUrl" placeholder="o pegar URL del logo">
+        <button class="button" type="button" onclick="saveLogoUrl()">Guardar</button>
+        <button class="button redo" type="button" onclick="redoLogo()">Rehacer</button>
       </form>
     </div>
   </div>
@@ -256,18 +264,33 @@
       measurementId: "G-FJ21S3SE0Z"
     };
 
-    // Initialize Firebase
+    // Initialize Firebase with retry logic
     let app, db;
-    try {
-      app = firebase.initializeApp(firebaseConfig);
-      db = firebase.firestore();
-      console.log("Firebase initialized successfully");
-    } catch (error) {
-      console.error("Error initializing Firebase:", error);
+    async function initializeFirebase() {
+      let attempts = 0;
+      const maxAttempts = 3;
+      while (attempts < maxAttempts) {
+        try {
+          if (typeof firebase === 'undefined') {
+            throw new Error("Firebase SDK not loaded");
+          }
+          app = firebase.initializeApp(firebaseConfig);
+          db = firebase.firestore();
+          console.log("Firebase initialized successfully");
+          return true;
+        } catch (error) {
+          attempts++;
+          console.error(`Firebase initialization attempt ${attempts} failed:`, error);
+          if (attempts === maxAttempts) {
+            console.error("Failed to initialize Firebase after maximum attempts");
+            alert("No se pudo inicializar Firebase. Revisa tu conexión a internet y recarga la página.");
+            return false;
+          }
+          // Wait 1 second before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
     }
-
-    let isAdmin = false;
-    let contacts = [];
 
     // Fetch logo URL from Firestore on page load
     async function loadLogoOnStart() {
@@ -281,6 +304,7 @@
           const img = document.getElementById("logoImage");
           img.src = doc.data().url;
           img.classList.remove("hidden");
+          document.getElementById("logoUrl").value = doc.data().url;
         }
       } catch (error) {
         console.error("Error loading logo:", error);
@@ -306,9 +330,17 @@
       }
     }
 
-    // Call fetchContacts and loadLogoOnStart when the page loads
-    fetchContacts();
-    loadLogoOnStart();
+    // Initialize Firebase and load data
+    async function initApp() {
+      const initialized = await initializeFirebase();
+      if (initialized) {
+        await Promise.all([fetchContacts(), loadLogoOnStart()]);
+      }
+    }
+    initApp();
+
+    let isAdmin = false;
+    let contacts = [];
 
     function showLoginModal() {
       console.log("showLoginModal called");
@@ -465,19 +497,43 @@
     async function saveLogoUrl() {
       console.log("saveLogoUrl called");
       const url = document.getElementById("logoUrl").value.trim();
-      if (!url) return;
+      if (!url) {
+        alert("Por favor, ingresa una URL válida para el logo.");
+        return;
+      }
       const img = document.getElementById("logoImage");
       img.src = url;
       img.classList.remove("hidden");
       if (!db) {
         console.error("Firestore not initialized");
+        alert("Error: Firestore no está inicializado. Revisa la consola para más detalles.");
         return;
       }
       try {
         await db.collection("settings").doc("logo").set({ url });
         console.log("Logo URL saved to Firestore:", url);
+        alert("Logo guardado exitosamente.");
       } catch (error) {
         console.error("Error saving logo URL:", error);
+        alert("Error al guardar el logo: " + error.message);
+      }
+    }
+
+    function redoLogo() {
+      console.log("redoLogo called");
+      document.getElementById("logoUrl").value = "";
+      const img = document.getElementById("logoImage");
+      img.src = "";
+      img.classList.add("hidden");
+      if (!db) {
+        console.error("Firestore not initialized");
+        return;
+      }
+      try {
+        db.collection("settings").doc("logo").delete();
+        console.log("Logo URL removed from Firestore");
+      } catch (error) {
+        console.error("Error removing logo URL:", error);
       }
     }
 
