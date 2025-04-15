@@ -242,7 +242,11 @@
 
   <script>
     let isAdmin = false;
-    const contacts = [];
+    let contacts = JSON.parse(localStorage.getItem('contacts')) || [];
+
+    function saveContacts() {
+      localStorage.setItem('contacts', JSON.stringify(contacts));
+    }
 
     function showLoginModal() {
       if (isAdmin) return;
@@ -327,6 +331,7 @@
         ubicacion: document.getElementById("newUbicacion").value
       };
       contacts.push(c);
+      saveContacts();
       event.target.reset();
       renderTable();
     }
@@ -343,6 +348,7 @@
 
     function deleteContact(index) {
       contacts.splice(index, 1);
+      saveContacts();
       renderTable();
     }
 
@@ -395,6 +401,7 @@
             contacts.push({ nombre, telefono, correo, cargo, ubicacion });
           }
         });
+        saveContacts();
         renderTable();
       };
       reader.readAsText(file);
@@ -420,6 +427,7 @@
         const valB = Object.values(b)[colIndex - 1].toLowerCase();
         return valA.localeCompare(valB);
       });
+      saveContacts();
       renderTable();
     }
 
@@ -440,6 +448,9 @@
       const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank');
     }
+
+    // Renderizar tabla al cargar la página
+    renderTable();
   </script>
 </body>
 </html>
