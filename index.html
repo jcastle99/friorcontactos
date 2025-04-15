@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Contactos - FRIOR S.L.</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <header>
+    <h1>Contactos FRIOR S.L.</h1>
+    <button id="admin-login">Admin</button>
+  </header>
+  <div class="filters">
+    <input type="text" id="filter-name" placeholder="Filtrar por nombre"/>
+    <input type="text" id="filter-role" placeholder="Filtrar por cargo"/>
+    <input type="text" id="filter-location" placeholder="Filtrar por ubicación"/>
+  </div>
+  <table id="contact-table">
+    <thead>
+      <tr>
+        <th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Cargo</th><th>Ubicación</th><th>Compartir</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <script src="script.js"></script>
+</body>
+</html>

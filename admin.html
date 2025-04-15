@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin - FRIOR S.L.</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <header><h1>Panel de Administración</h1></header>
+  <section>
+    <input type="file" id="import-excel" />
+    <input type="text" id="logo-url" placeholder="URL del logo" />
+    <input type="file" id="upload-logo" />
+    <form id="new-contact-form">
+      <input type="text" placeholder="Nombre" />
+      <input type="text" placeholder="Teléfono" />
+      <input type="email" placeholder="Correo" />
+      <input type="text" placeholder="Cargo" />
+      <input type="text" placeholder="Ubicación" />
+      <button type="submit">Agregar contacto</button>
+    </form>
+    <table id="admin-table">
+      <thead>
+        <tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Cargo</th><th>Ubicación</th><th>Acciones</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+  <script src="script.js"></script>
+</body>
+</html>
