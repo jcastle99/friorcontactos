@@ -235,7 +235,7 @@
       </form>
       <form class="logo-form">
         <input type="file" id="logoUpload" accept="image/*" onchange="uploadLogo(event)">
-        <input type="text" id="logoUrl" placeholder="o pegar URL del logo" onchange="loadLogoUrl()">
+        <input type="text" id="logoUrl" placeholder="o pegar URL del logo" onchange="saveLogoUrl()">
       </form>
     </div>
   </div>
@@ -269,6 +269,24 @@
     let isAdmin = false;
     let contacts = [];
 
+    // Fetch logo URL from Firestore on page load
+    async function loadLogoOnStart() {
+      if (!db) {
+        console.error("Firestore not initialized");
+        return;
+      }
+      try {
+        const doc = await db.collection("settings").doc("logo").get();
+        if (doc.exists && doc.data().url) {
+          const img = document.getElementById("logoImage");
+          img.src = doc.data().url;
+          img.classList.remove("hidden");
+        }
+      } catch (error) {
+        console.error("Error loading logo:", error);
+      }
+    }
+
     // Fetch contacts from Firestore and render the table
     async function fetchContacts() {
       if (!db) {
@@ -288,8 +306,9 @@
       }
     }
 
-    // Call fetchContacts when the page loads
+    // Call fetchContacts and loadLogoOnStart when the page loads
     fetchContacts();
+    loadLogoOnStart();
 
     function showLoginModal() {
       console.log("showLoginModal called");
@@ -381,14 +400,15 @@
       console.log("addContact called");
       if (!db) {
         console.error("Firestore not initialized");
+        alert("Error: Firestore no está inicializado. Revisa la consola para más detalles.");
         return;
       }
       const c = {
-        nombre: document.getElementById("newName").value,
-        telefono: document.getElementById("newPhone").value,
-        correo: document.getElementById("newEmail").value,
-        cargo: document.getElementById("newCargo").value,
-        ubicacion: document.getElementById("newUbicacion").value
+        nombre: document.getElementById("newName").value.trim(),
+        telefono: document.getElementById("newPhone").value.trim(),
+        correo: document.getElementById("newEmail").value.trim(),
+        cargo: document.getElementById("newCargo").value.trim(),
+        ubicacion: document.getElementById("newUbicacion").value.trim()
       };
       try {
         await db.collection("contacts").add(c);
@@ -397,6 +417,7 @@
         fetchContacts();
       } catch (error) {
         console.error("Error adding contact:", error);
+        alert("Error al agregar el contacto: " + error.message);
       }
     }
 
@@ -437,24 +458,27 @@
 
     function uploadLogo(event) {
       console.log("uploadLogo called");
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const img = document.getElementById("logoImage");
-        img.src = e.target.result;
-        img.classList.remove("hidden");
-      };
-      reader.readAsDataURL(file);
+      alert("Por favor, usa una URL para el logo en lugar de un archivo local. Sube la imagen a un servicio como imgur.com y pega la URL en el campo 'o pegar URL del logo'.");
+      document.getElementById("logoUpload").value = ""; // Clear the file input
     }
 
-    function loadLogoUrl() {
-      console.log("loadLogoUrl called");
-      const url = document.getElementById("logoUrl").value;
+    async function saveLogoUrl() {
+      console.log("saveLogoUrl called");
+      const url = document.getElementById("logoUrl").value.trim();
       if (!url) return;
       const img = document.getElementById("logoImage");
       img.src = url;
       img.classList.remove("hidden");
+      if (!db) {
+        console.error("Firestore not initialized");
+        return;
+      }
+      try {
+        await db.collection("settings").doc("logo").set({ url });
+        console.log("Logo URL saved to Firestore:", url);
+      } catch (error) {
+        console.error("Error saving logo URL:", error);
+      }
     }
 
     function exportToExcel() {
