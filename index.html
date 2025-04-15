@@ -10,43 +10,57 @@
     header { background: #003366; color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
     header h1 { margin: 0; font-size: 1.5rem; }
     .hidden { display: none; }
-    .admin-login { position: fixed; top: 10px; right: 10px; font-size: 0.8rem; cursor: pointer; color: white; }
+    .admin-login { font-size: 0.8rem; cursor: pointer; color: white; }
+    .logout { font-size: 0.8rem; cursor: pointer; color: white; margin-left: 10px; }
     .container { padding: 1rem; max-width: 1200px; margin: auto; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
     th { background-color: #004080; color: white; cursor: pointer; }
     tr:hover { background-color: #f1f1f1; }
     .actions i { margin: 0 5px; cursor: pointer; }
+    .filters { display: flex; align-items: center; margin-bottom: 1rem; }
     .filters input { margin-right: 1rem; padding: 5px; }
-    .admin-panel, .add-form, .logo-form { margin-top: 1rem; }
+    .filters .search-icon { margin-right: 10px; color: #004080; }
+    .admin-panel, .add-form, .logo-form, .import-form { margin-top: 1rem; }
     .button { padding: 0.5rem 1rem; margin: 5px; background: #004080; color: white; border: none; border-radius: 4px; cursor: pointer; }
     .button:hover { background: #0066cc; }
     .contact-actions a { margin-right: 10px; color: #0066cc; text-decoration: none; }
+    .select-all { margin-bottom: 10px; }
   </style>
 </head>
 <body>
   <header>
     <h1>Contactos FRIOR S.L.</h1>
-    <div class="admin-login" onclick="toggleLogin()">Admin</div>
+    <div class="admin-controls">
+      <div class="admin-login" onclick="toggleLogin()">Admin</div>
+      <div class="logout hidden" id="logoutBtn" onclick="logout()">Cerrar Sesión</div>
+    </div>
   </header>
 
   <div class="container">
     <div class="filters">
+      <i class="fas fa-search search-icon"></i>
       <input type="text" id="filterName" placeholder="Filtrar por nombre" oninput="filterTable()">
       <input type="text" id="filterCargo" placeholder="Filtrar por cargo" oninput="filterTable()">
       <input type="text" id="filterUbicacion" placeholder="Filtrar por ubicación" oninput="filterTable()">
     </div>
 
     <button onclick="exportToExcel()" class="button">Exportar a Excel</button>
+    <button onclick="sendSelectedToWhatsApp()" class="button">Enviar Seleccionados por WhatsApp</button>
+
+    <div class="select-all">
+      <input type="checkbox" id="selectAll" onclick="toggleSelectAll()"> Seleccionar Todos
+    </div>
 
     <table id="contactTable">
       <thead>
         <tr>
-          <th onclick="sortTable(0)">Nombre</th>
-          <th onclick="sortTable(1)">Teléfono</th>
-          <th onclick="sortTable(2)">Correo</th>
-          <th onclick="sortTable(3)">Cargo</th>
-          <th onclick="sortTable(4)">Ubicación</th>
+          <th><input type="checkbox" id="headerCheckbox" onclick="toggleSelectAll()"></th>
+          <th onclick="sortTable(1)">Nombre</th>
+          <th onclick="sortTable(2)">Teléfono</th>
+          <th onclick="sortTable(3)">Correo</th>
+          <th onclick="sortTable(4)">Cargo</th>
+          <th onclick="sortTable(5)">Ubicación</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -66,6 +80,10 @@
         <button class="button" type="submit">Agregar</button>
         <button class="button" type="button" onclick="cancelChanges()">Cancelar</button>
       </form>
+      <form class="import-form">
+        <input type="file" id="excelUpload" accept=".csv" onchange="importFromExcel(event)">
+        <button class="button" type="button" onclick="document.getElementById('excelUpload').click()">Importar desde Excel</button>
+      </form>
       <form class="logo-form">
         <input type="file" id="logoUpload" accept="image/*" onchange="uploadLogo(event)">
         <input type="text" id="logoUrl" placeholder="o pegar URL del logo" onchange="loadLogoUrl()">
@@ -80,15 +98,26 @@
     const contacts = [];
 
     function toggleLogin() {
+      if (isAdmin) return;
       const user = prompt("Usuario:");
       const pass = prompt("Contraseña:");
       if (user === 'adminfrior' && pass === 'frior2025') {
         isAdmin = true;
         document.getElementById("adminPanel").classList.remove("hidden");
+        document.getElementById("logoutBtn").classList.remove("hidden");
+        document.querySelector(".admin-login").classList.add("hidden");
         renderTable();
       } else {
         alert("Acceso denegado.");
       }
+    }
+
+    function logout() {
+      isAdmin = false;
+      document.getElementById("adminPanel").classList.add("hidden");
+      document.getElementById("logoutBtn").classList.add("hidden");
+      document.querySelector(".admin-login").classList.remove("hidden");
+      renderTable();
     }
 
     function renderTable() {
@@ -97,8 +126,9 @@
       contacts.forEach((c, i) => {
         const row = document.createElement("tr");
         row.innerHTML = `
+          <td><input type="checkbox" class="contact-checkbox" data-index="${i}"></td>
           <td>${c.nombre}</td>
-          <td><a href="tel:${c.telefono}">${c.telefono}</a></td>
+          <td><a href="tel:${c.telefono}" title="Llamar">${c.telefono}</a></td>
           <td><a href="mailto:${c.correo}">${c.correo}</a></td>
           <td>${c.cargo}</td>
           <td>${c.ubicacion}</td>
@@ -106,6 +136,7 @@
             <div class="contact-actions">
               <a href="https://wa.me/${c.telefono}" target="_blank"><i class="fab fa-whatsapp"></i></a>
               <a href="mailto:${c.correo}"><i class="fas fa-envelope"></i></a>
+              <a href="tel:${c.telefono}"><i class="fas fa-phone"></i></a>
             </div>
             ${isAdmin ? `<i class="fas fa-edit" onclick="editContact(${i})"></i>
                          <i class="fas fa-trash" onclick="deleteContact(${i})"></i>` : ""}
@@ -180,13 +211,31 @@
       document.body.removeChild(link);
     }
 
+    function importFromExcel(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        const rows = text.split('\n').slice(1); // Skip header
+        rows.forEach(row => {
+          const [nombre, telefono, correo, cargo, ubicacion] = row.split(',');
+          if (nombre && telefono && correo && cargo && ubicacion) {
+            contacts.push({ nombre, telefono, correo, cargo, ubicacion });
+          }
+        });
+        renderTable();
+      };
+      reader.readAsText(file);
+    }
+
     function filterTable() {
       const name = document.getElementById("filterName").value.toLowerCase();
       const cargo = document.getElementById("filterCargo").value.toLowerCase();
       const ubicacion = document.getElementById("filterUbicacion").value.toLowerCase();
       const rows = document.querySelectorAll("#contactList tr");
       rows.forEach(row => {
-        const [n, , , c, u] = row.children;
+        const [, n, , , c, u] = row.children;
         const visible = n.textContent.toLowerCase().includes(name) &&
                         c.textContent.toLowerCase().includes(cargo) &&
                         u.textContent.toLowerCase().includes(ubicacion);
@@ -196,11 +245,29 @@
 
     function sortTable(colIndex) {
       contacts.sort((a, b) => {
-        const valA = Object.values(a)[colIndex].toLowerCase();
-        const valB = Object.values(b)[colIndex].toLowerCase();
+        const valA = Object.values(a)[colIndex - 1].toLowerCase();
+        const valB = Object.values(b)[colIndex - 1].toLowerCase();
         return valA.localeCompare(valB);
       });
       renderTable();
+    }
+
+    function toggleSelectAll() {
+      const headerCheckbox = document.getElementById("headerCheckbox");
+      const checkboxes = document.querySelectorAll(".contact-checkbox");
+      checkboxes.forEach(cb => cb.checked = headerCheckbox.checked);
+    }
+
+    function sendSelectedToWhatsApp() {
+      const selected = Array.from(document.querySelectorAll(".contact-checkbox:checked"))
+        .map(cb => contacts[cb.dataset.index]);
+      if (selected.length === 0) {
+        alert("Por favor, selecciona al menos un contacto.");
+        return;
+      }
+      const message = selected.map(c => `${c.nombre}: ${c.telefono}`).join('\n');
+      const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank');
     }
   </script>
 </body>
