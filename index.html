@@ -2,28 +2,221 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Contactos - FRIOR S.L.</title>
-  <link rel="stylesheet" href="style.css"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contactos Frior S.L</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f3f3;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #1e3a8a;
+      color: white;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header img {
+      max-height: 40px;
+      margin-right: 1rem;
+    }
+    h1 {
+      margin: 0;
+    }
+    .admin-link {
+      color: white;
+      font-size: 0.8rem;
+      opacity: 0.3;
+      cursor: pointer;
+    }
+    .filters input {
+      margin: 0.5rem;
+      padding: 0.3rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    .admin-actions button {
+      margin-right: 0.3rem;
+    }
+  </style>
 </head>
 <body>
   <header>
-    <h1>Contactos FRIOR S.L.</h1>
-    <button id="admin-login">Admin</button>
+    <div style="display: flex; align-items: center">
+      <h1>Contactos Frior S.L</h1>
+    </div>
+    <div class="admin-link" onclick="document.getElementById('login').style.display = 'block';">Admin</div>
   </header>
-  <div class="filters">
-    <input type="text" id="filter-name" placeholder="Filtrar por nombre"/>
-    <input type="text" id="filter-role" placeholder="Filtrar por cargo"/>
-    <input type="text" id="filter-location" placeholder="Filtrar por ubicación"/>
-  </div>
+
+  <section class="filters">
+    <input id="filter-name" type="text" placeholder="Filtrar por nombre" />
+    <input id="filter-role" type="text" placeholder="Filtrar por cargo" />
+    <input id="filter-location" type="text" placeholder="Filtrar por ubicación" />
+  </section>
+
   <table id="contact-table">
     <thead>
       <tr>
-        <th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Cargo</th><th>Ubicación</th><th>Compartir</th>
+        <th>Nombre</th>
+        <th>Teléfono</th>
+        <th>Correo</th>
+        <th>Cargo</th>
+        <th>Ubicación</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
-  <script src="script.js"></script>
+
+  <div id="login" style="display:none; padding: 1rem; background:#fff;">
+    <h2>Iniciar sesión como Admin</h2>
+    <form id="login-form">
+      <input type="text" id="username" placeholder="Usuario" required />
+      <input type="password" id="password" placeholder="Contraseña" required />
+      <button type="submit">Entrar</button>
+    </form>
+  </div>
+
+  <div id="admin-panel" style="display:none; padding:1rem; background:#fff;">
+    <h2>Panel de Administración</h2>
+    <form id="new-contact-form">
+      <input type="text" placeholder="Nombre" required />
+      <input type="text" placeholder="Teléfono" required />
+      <input type="email" placeholder="Correo" required />
+      <input type="text" placeholder="Cargo" required />
+      <input type="text" placeholder="Ubicación" required />
+      <button type="submit">Agregar</button>
+    </form>
+    <input type="file" id="import-excel" accept=".xlsx,.xls" />
+    <input type="file" id="upload-logo" accept="image/*" />
+    <input type="text" id="logo-url" placeholder="URL del logo" />
+
+    <table id="admin-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Teléfono</th>
+          <th>Correo</th>
+          <th>Cargo</th>
+          <th>Ubicación</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const rows = document.querySelectorAll("#contact-table tbody tr");
+
+      function filterTable(index, value) {
+        document.querySelectorAll("#contact-table tbody tr").forEach(row => {
+          const cell = row.cells[index]?.textContent.toLowerCase() || "";
+          row.style.display = cell.includes(value) ? "" : "none";
+        });
+      }
+
+      document.getElementById("filter-name").addEventListener("input", e => filterTable(0, e.target.value.toLowerCase()));
+      document.getElementById("filter-role").addEventListener("input", e => filterTable(3, e.target.value.toLowerCase()));
+      document.getElementById("filter-location").addEventListener("input", e => filterTable(4, e.target.value.toLowerCase()));
+
+      const loginForm = document.getElementById("login-form");
+      loginForm?.addEventListener("submit", e => {
+        e.preventDefault();
+        const user = document.getElementById('username').value;
+        const pass = document.getElementById('password').value;
+        if (user === "adminfrior" && pass === "frior2025") {
+          document.getElementById("login").style.display = "none";
+          document.getElementById("admin-panel").style.display = "block";
+        } else {
+          alert("Credenciales incorrectas.");
+        }
+      });
+
+      const newContactForm = document.getElementById("new-contact-form");
+      newContactForm?.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const inputs = this.querySelectorAll("input");
+        const data = Array.from(inputs).map(input => input.value);
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${data[0]}</td>
+          <td>${data[1]}</td>
+          <td>${data[2]}</td>
+          <td>${data[3]}</td>
+          <td>${data[4]}</td>
+          <td><button class="edit-btn">Editar</button><button class="delete-btn">Eliminar</button></td>
+        `;
+        document.querySelector("#admin-table tbody").appendChild(row);
+        addEditDeleteFunctionality(row);
+        this.reset();
+      });
+
+      function addEditDeleteFunctionality(row) {
+        row.querySelector(".edit-btn").addEventListener("click", () => {
+          const cells = row.querySelectorAll("td");
+          for (let i = 0; i < 5; i++) {
+            cells[i].innerText = prompt("Editar:", cells[i].innerText) || cells[i].innerText;
+          }
+        });
+        row.querySelector(".delete-btn").addEventListener("click", () => {
+          if (confirm("¿Eliminar contacto?")) row.remove();
+        });
+      }
+
+      document.getElementById("import-excel")?.addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function () {
+          const workbook = XLSX.read(reader.result, { type: "binary" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const data = XLSX.utils.sheet_to_json(sheet);
+          data.forEach(contact => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${contact.Nombre}</td>
+              <td>${contact.Telefono}</td>
+              <td>${contact.Correo}</td>
+              <td>${contact.Cargo}</td>
+              <td>${contact.Ubicacion}</td>
+              <td><button class="edit-btn">Editar</button><button class="delete-btn">Eliminar</button></td>
+            `;
+            document.querySelector("#admin-table tbody").appendChild(row);
+            addEditDeleteFunctionality(row);
+          });
+        };
+        reader.readAsBinaryString(file);
+      });
+
+      document.getElementById("upload-logo")?.addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function () {
+          const logo = document.createElement('img');
+          logo.src = reader.result;
+          document.querySelector("header").prepend(logo);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.getElementById("logo-url")?.addEventListener("input", function (e) {
+        const logo = document.createElement('img');
+        logo.src = e.target.value;
+        document.querySelector("header").prepend(logo);
+      });
+    });
+  </script>
 </body>
 </html>
