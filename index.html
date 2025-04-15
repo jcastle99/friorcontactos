@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contactos FRIOR S.L.</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <img src="logo.png" alt="FRIOR S.L." id="logo">
+        <h1>Contactos FRIOR S.L.</h1>
+    </header>
+
+    <div class="filters">
+        <input type="text" id="filterName" placeholder="Buscar por nombre">
+        <input type="text" id="filterLocation" placeholder="Ubicación">
+        <input type="text" id="filterPosition" placeholder="Cargo">
+    </div>
+
+    <table id="contactTable">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Teléfono</th>
+                <th>Correo</th>
+                <th>Cargo</th>
+                <th>Ubicación</th>
+                <th>Compartir</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <!-- Botones -->
+    <div class="actions">
+        <input type="file" id="importExcel" accept=".xlsx">
+        <button onclick="exportToExcel()">Exportar a Excel</button>
+    </div>
+
+    <!-- Botón admin oculto -->
+    <div id="admin-btn" title="Acceso admin">⚙️</div>
+
+    <!-- Modal de login admin -->
+    <div id="adminModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Login Admin</h2>
+            <input type="text" id="username" placeholder="Usuario">
+            <input type="password" id="password" placeholder="Contraseña">
+            <button onclick="loginAdmin()">Ingresar</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
