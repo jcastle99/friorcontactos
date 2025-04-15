@@ -7,32 +7,181 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
     body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; }
-    header { background: #003366; color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
-    header h1 { margin: 0; font-size: 1.5rem; }
+    header { 
+      background: #003366; 
+      color: white; 
+      padding: 1rem; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      flex-wrap: wrap; 
+    }
+    header h1 { 
+      margin: 0; 
+      font-size: 1.5rem; 
+      display: flex; 
+      align-items: center; 
+    }
+    header img#logoImage { 
+      max-height: 50px; 
+      margin-right: 10px; 
+    }
     .hidden { display: none; }
-    .admin-login { font-size: 0.8rem; cursor: pointer; color: white; }
-    .logout { font-size: 0.8rem; cursor: pointer; color: white; margin-left: 10px; }
-    .container { padding: 1rem; max-width: 1200px; margin: auto; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background-color: #004080; color: white; cursor: pointer; }
-    tr:hover { background-color: #f1f1f1; }
-    .actions i { margin: 0 5px; cursor: pointer; }
-    .filters { display: flex; align-items: center; margin-bottom: 1rem; }
-    .filters input { margin-right: 1rem; padding: 5px; }
-    .filters .search-icon { margin-right: 10px; color: #004080; }
-    .admin-panel, .add-form, .logo-form, .import-form { margin-top: 1rem; }
-    .button { padding: 0.5rem 1rem; margin: 5px; background: #004080; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .button:hover { background: #0066cc; }
-    .contact-actions a { margin-right: 10px; color: #0066cc; text-decoration: none; }
-    .select-all { margin-bottom: 10px; }
+    .admin-controls { display: flex; align-items: center; }
+    .admin-login, .logout { 
+      font-size: 1rem; 
+      cursor: pointer; 
+      color: white; 
+      margin-left: 10px; 
+    }
+    .admin-login:hover, .logout:hover { 
+      color: #0066cc; 
+    }
+    .container { 
+      padding: 1rem; 
+      max-width: 1200px; 
+      margin: auto; 
+      background: white; 
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); 
+    }
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin-top: 1rem; 
+    }
+    th, td { 
+      border: 1px solid #ddd; 
+      padding: 8px; 
+      text-align: left; 
+    }
+    th { 
+      background-color: #004080; 
+      color: white; 
+      cursor: pointer; 
+    }
+    tr:hover { 
+      background-color: #f1f1f1; 
+    }
+    .actions i { 
+      margin: 0 5px; 
+      cursor: pointer; 
+    }
+    .filters { 
+      display: flex; 
+      align-items: center; 
+      margin-bottom: 1rem; 
+      flex-wrap: wrap; 
+    }
+    .filters input { 
+      margin: 5px; 
+      padding: 5px; 
+      flex: 1; 
+      min-width: 150px; 
+    }
+    .filters .search-icon { 
+      margin-right: 10px; 
+      color: #004080; 
+    }
+    .admin-panel, .add-form, .logo-form, .import-form { 
+      margin-top: 1rem; 
+    }
+    .button { 
+      padding: 0.5rem 1rem; 
+      margin: 5px; 
+      background: #004080; 
+      color: white; 
+      border: none; 
+      border-radius: 4px; 
+      cursor: pointer; 
+    }
+    .button:hover { 
+      background: #0066cc; 
+    }
+    .contact-actions a { 
+      margin-right: 10px; 
+      color: #0066cc; 
+      text-decoration: none; 
+    }
+    .select-all { 
+      margin-bottom: 10px; 
+    }
+    .modal { 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      background: rgba(0,0,0,0.5); 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      z-index: 1000; 
+    }
+    .modal-content { 
+      background: white; 
+      padding: 20px; 
+      border-radius: 5px; 
+      width: 90%; 
+      max-width: 400px; 
+      text-align: center; 
+    }
+    .modal-content input { 
+      width: 100%; 
+      margin: 10px 0; 
+      padding: 8px; 
+      box-sizing: border-box; 
+    }
+    .modal-content button { 
+      margin: 5px; 
+    }
+
+    /* Estilos responsivos */
+    @media (max-width: 768px) {
+      header { 
+        flex-direction: column; 
+        align-items: flex-start; 
+      }
+      header h1 { 
+        font-size: 1.2rem; 
+      }
+      .admin-controls { 
+        margin-top: 10px; 
+      }
+      table { 
+        font-size: 0.9rem; 
+      }
+      th, td { 
+        padding: 5px; 
+      }
+      .filters input { 
+        min-width: 100%; 
+      }
+      .button { 
+        width: 100%; 
+        box-sizing: border-box; 
+      }
+    }
+    @media (max-width: 480px) {
+      header img#logoImage { 
+        max-height: 40px; 
+      }
+      .modal-content { 
+        padding: 15px; 
+      }
+      .modal-content input, .modal-content button { 
+        font-size: 0.9rem; 
+      }
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Contactos FRIOR S.L.</h1>
+    <h1>
+      <img id="logoImage" class="hidden" alt="Logo FRIOR S.L.">
+      Contactos FRIOR S.L.
+    </h1>
     <div class="admin-controls">
-      <div class="admin-login" onclick="toggleLogin()">Admin</div>
+      <i class="fas fa-user-shield admin-login" onclick="showLoginModal()"></i>
       <div class="logout hidden" id="logoutBtn" onclick="logout()">Cerrar Sesión</div>
     </div>
   </header>
@@ -89,23 +238,42 @@
         <input type="text" id="logoUrl" placeholder="o pegar URL del logo" onchange="loadLogoUrl()">
       </form>
     </div>
+  </div>
 
-    <img id="logoImage" class="hidden" style="max-height: 80px; margin-top: 20px;">
+  <div class="modal hidden" id="loginModal">
+    <div class="modal-content">
+      <h3>Iniciar Sesión</h3>
+      <input type="text" id="adminUser" placeholder="Usuario" required>
+      <input type="password" id="adminPass" placeholder="Contraseña" required>
+      <button class="button" onclick="login()">Iniciar Sesión</button>
+      <button class="button" onclick="closeLoginModal()">Cancelar</button>
+    </div>
   </div>
 
   <script>
     let isAdmin = false;
     const contacts = [];
 
-    function toggleLogin() {
+    function showLoginModal() {
       if (isAdmin) return;
-      const user = prompt("Usuario:");
-      const pass = prompt("Contraseña:");
+      document.getElementById("loginModal").classList.remove("hidden");
+    }
+
+    function closeLoginModal() {
+      document.getElementById("loginModal").classList.add("hidden");
+      document.getElementById("adminUser").value = "";
+      document.getElementById("adminPass").value = "";
+    }
+
+    function login() {
+      const user = document.getElementById("adminUser").value;
+      const pass = document.getElementById("adminPass").value;
       if (user === 'adminfrior' && pass === 'frior2025') {
         isAdmin = true;
         document.getElementById("adminPanel").classList.remove("hidden");
         document.getElementById("logoutBtn").classList.remove("hidden");
         document.querySelector(".admin-login").classList.add("hidden");
+        closeLoginModal();
         renderTable();
       } else {
         alert("Acceso denegado.");
